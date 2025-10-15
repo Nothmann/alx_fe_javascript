@@ -25,10 +25,12 @@ function addQuote(event) {
     populateCategories(); // Refresh dropdown
     quoteForm.reset();
     filterQuotes(); // Show quote from selected category
+    document.getElementById("quoteForm").reset();
   }
 }
 
 // Event listeners
+document.getElementById("newQuote").addEventListener("click", showRandomQuote);
 newQuoteBtn.addEventListener("click", showRandomQuote);
 quoteForm.addEventListener("submit", addQuote);
 
@@ -64,6 +66,48 @@ function showRandomQuote() {
   `;
   sessionStorage.setItem("lastQuote", JSON.stringify(quote));
 }
+
+function createAddQuoteForm() {
+  const formSection = document.createElement("section");
+  formSection.id = "addQuoteSection";
+
+  const heading = document.createElement("h2");
+  heading.textContent = "Add a New Quote";
+
+  const form = document.createElement("form");
+  form.id = "quoteForm";
+
+  const inputText = document.createElement("input");
+  inputText.id = "newQuoteText";
+  inputText.type = "text";
+  inputText.placeholder = "Enter a new quote";
+  inputText.required = true;
+
+  const inputCategory = document.createElement("input");
+  inputCategory.id = "newQuoteCategory";
+  inputCategory.type = "text";
+  inputCategory.placeholder = "Enter quote category";
+  inputCategory.required = true;
+
+  const submitBtn = document.createElement("button");
+  submitBtn.type = "submit";
+  submitBtn.textContent = "Add Quote";
+
+  form.appendChild(inputText);
+  form.appendChild(inputCategory);
+  form.appendChild(submitBtn);
+  formSection.appendChild(heading);
+  formSection.appendChild(form);
+  document.body.appendChild(formSection);
+
+  form.addEventListener("submit", addQuote);
+}
+
+window.addEventListener("load", () => {
+  createAddQuoteForm();
+  populateCategories();
+  // ...rest of your load logic
+});
 
 // Optional: Load last quote on page load
 window.addEventListener("load", () => {
@@ -206,3 +250,61 @@ function notifyUser(message) {
     notice.style.display = "none";
   }, 5000);
 }
+
+function fetchQuotesFromServer() {
+  return fetch("https://jsonplaceholder.typicode.com/posts")
+    .then(response => response.json())
+    .then(data => {
+      // Simulate server quotes
+      return data.slice(0, 5).map(post => ({
+        text: post.title,
+        category: "Server"
+      }));
+    })
+    .catch(error => {
+      console.error("Error fetching server quotes:", error);
+      return [];
+    });
+}
+
+function syncQuotes() {
+  fetchQuotesFromServer().then(serverQuotes => {
+    let updated = false;
+
+    serverQuotes.forEach(serverQuote => {
+      const exists = quotes.some(localQuote => localQuote.text === serverQuote.text);
+      if (!exists) {
+        quotes.push(serverQuote);
+        updated = true;
+      }
+    });
+
+    if (updated) {
+      saveQuotes();
+      populateCategories();
+      notifyUser("Quotes synced from server. Conflicts resolved.");
+    }
+  });
+}
+
+setInterval(syncQuotes, 30000); // Sync every 30 seconds
+
+function postQuoteToServer(quote) {
+  fetch("https://jsonplaceholder.typicode.com/posts", {
+    method: "POST",
+    body: JSON.stringify(quote),
+    headers: {
+      "Content-type": "application/json; charset=UTF-8"
+    }
+  })
+    .then(response => response.json())
+    .then(data => {
+      console.log("Posted to server:", data);
+    })
+    .catch(error => {
+      console.error("Error posting quote:", error);
+    });
+}
+
+postQuoteToServer({ text, category });
+
